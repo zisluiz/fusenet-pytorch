@@ -78,6 +78,8 @@ if __name__ == '__main__':
 			iter_data_time = time.time()
 
 		print('End of epoch %d / %d \t Time Taken: %d sec' %   (epoch, train_opt.niter, time.time() - epoch_start_time))
+		#print(dir(model.loss_segmentation))
+		#print(model.loss_segmentation.item())
 		model.update_learning_rate()
 		if epoch > 100 and epoch % train_opt.save_epoch_freq == 0:
 			print('saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
@@ -105,7 +107,7 @@ if __name__ == '__main__':
 					conf_mat += confusion_matrix(gt, pred, test_dataset.dataset.num_labels, ignore_label=test_dataset.dataset.ignore_label)
 					# visualizer.display_current_results(model.get_current_visuals(), epoch, False)
 					losses = model.get_current_losses()
-					test_loss_iter.append(model.loss_segmentation)
+					test_loss_iter.append(model.loss_segmentation.item())
 					print('test epoch {0:}, iters: {1:}/{2:} '.format(epoch, epoch_iter, len(test_dataset) * test_opt.batch_size), end='\r')
 
 			avg_test_loss = np.mean(test_loss_iter)
