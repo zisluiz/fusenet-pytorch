@@ -1,50 +1,62 @@
-import matplotlib.pyplot as plt
-
-import numpy as np
+import os
+from options.test_options import TestOptions
+from data import CreateDataLoader
+from models import create_model
+from util.visualizer import Visualizer
+from util.visualizer import save_images,save_scannet_prediction
+from util.util import confusion_matrix, getScores
+from util import html
 import torch
-from torch import nn
-from torch import optim
-import torch.nn.functional as F
-from torchvision import datasets, transforms, models
-from PIL import Image
-from torch.autograd import Variable
+import numpy as np
+import cv2
 
 if __name__ == '__main__':
-    data_dir = '/data/train'
+    opt = TestOptions().parse()
+    # hard-code some parameters for test
+    # opt.num_threads = 1   # test code only supports num_threads = 1
+    opt.batch_size = 1    # test code only supports batch_size = 1
+    opt.serial_batches = True  # no shuffle
+    opt.no_flip = True    # no flip
+    opt.display_id = -1   # no visdom display
 
-    test_transforms = transforms.Compose([transforms.Resize(224),
-                                        transforms.ToTensor(),
-                                        #transforms.Normalize([0.485, 0.456, 0.406],
-                                        #                     [0.229, 0.224, 0.225])
-                                        ])
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model=torch.load('checkpoints/nyuv2/400_net_FuseNet.pth')
+    data_loader = CreateDataLoader(opt)
+    dataset = data_loader.load_data()
+    model = create_model(opt, dataset.dataset)
+    model.setup(opt)
     model.eval()
+    #visualizer = Visualizer(opt)
 
-    to_pil = transforms.ToPILImage()
-    index = predict_image(image)
-    print('############## Index: ')
-    print(index)
+    # create a website
+    #web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.epoch))
+    #webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
 
-def predict_image(image):
-    image_tensor = test_transforms(image).float()
-    image_tensor = image_tensor.unsqueeze_(0)
-    input = Variable(image_tensor)
-    input = input.to(device)
-    output = model(input)
-    index = output.data.cpu().numpy().argmax()
-    return index
+    test_loss_iter = []
+    epoch_iter = 0
+    conf_mat = np.zeros((dataset.dataset.num_labels, dataset.dataset.num_labels), dtype=np.float)
+    with torch.no_grad():
+        for i, data in enumerate(dataset):
+            model.set_input(data)
+            model.forward()
+            model.get_loss()
+            epoch_iter += opt.batch_size
+            gt = model.mask.cpu().int().numpy()
+            _, pred = torch.max(model.output.data.cpu(), 1)
+            pred = pred.float().detach().int().numpy()
 
-def get_random_images(num):
-    data = datasets.ImageFolder(data_dir, transform=test_transforms)
-    classes = data.classes
-    indices = list(range(len(data)))
-    np.random.shuffle(indices)
-    idx = indices[:num]
-    from torch.utils.data.sampler import SubsetRandomSampler
-    sampler = SubsetRandomSampler(idx)
-    loader = torch.utils.data.DataLoader(data, sampler=sampler, batch_size=num)
-    dataiter = iter(loader)
-    images, labels = dataiter.next()
-    return images, labels
+            save_images(None, model.get_current_visuals(), model.get_image_paths())
+            conf_mat += confusion_matrix(gt, pred, dataset.dataset.num_labels, ignore_label=dataset.dataset.ignore_label)
+            test_loss_iter.append(model.loss_segmentation.cpu().numpy())
+            print('Epoch {0:}, iters: {1:}/{2:}, loss: {3:} '.format(str(opt.epoch),
+                                                                        str(epoch_iter),
+                                                                        str(len(dataset) * opt.batch_size),
+                                                                        str(test_loss_iter[-1])), end='\r')
+
+        avg_test_loss = np.mean(test_loss_iter)
+        print ('Epoch {0:} test loss: {1:.3f} '.format(opt.epoch, avg_test_loss))
+        glob,mean,iou = getScores(conf_mat)
+        print ('Epoch {0:} glob acc : {1:.2f}, mean acc : {2:.2f}, IoU : {3:.2f}'.format(opt.epoch, glob, mean, iou))
+        #print('Confusim matrix is saved to ' + visualizer.conf_mat_name)
+        #visualizer.save_confusion_matrix(conf_mat, opt.epoch)
+
+    # save the website
+    #webpage.save()

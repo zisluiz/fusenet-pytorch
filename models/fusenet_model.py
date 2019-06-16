@@ -46,8 +46,10 @@ class FuseNetModel(BaseModel):
 	def set_input(self, input):
 		self.rgb_image = input['rgb_image'].to(self.device)
 		self.depth_image = input['depth_image'].to(self.device)
-		self.mask = input['mask'].to(self.device)
-		self.image_paths = input['path']
+		if 'mask' in input:
+			self.mask = input['mask'].to(self.device)
+		if 'path' in input:
+			self.image_paths = input['path']
 
 	def forward(self):
 		self.output = self.netFuseNet(self.rgb_image,self.depth_image)
