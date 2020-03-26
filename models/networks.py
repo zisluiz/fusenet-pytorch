@@ -73,7 +73,7 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
 
 	for root_child in net.children():
 		for children in root_child.children():
-			if children in root_child.need_initialization:
+			if hasattr(root_child, 'need_initialization') and children in root_child.need_initialization:
 				init_weights(children, init_type, gain=init_gain)
 			else:
 				init_weights(children,"pretrained",gain=init_gain) #for batchnorms

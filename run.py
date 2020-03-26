@@ -16,6 +16,7 @@ import psutil
 from datetime import datetime
 import time
 import nvidia_smi
+import PIL
 
 def predict_image(rgb, depth):
     input = {'rgb_image': rgb, 'depth_image': depth}
@@ -30,7 +31,13 @@ def predict_image(rgb, depth):
     return im
 
 if __name__ == '__main__':
-    f = open("results/run_"+str(int(round(time.time() * 1000)))+".txt", "w+")
+    useGpu = False
+
+    fileName = "run_"
+    if not useGpu:
+        fileName += "cpu_"
+
+    f = open("results/"+fileName+str(int(round(time.time() * 1000)))+".txt", "w+")
     f.write('=== Start time: '+str(datetime.now())+'\n')
 
     p = psutil.Process(os.getpid())
@@ -50,7 +57,11 @@ if __name__ == '__main__':
     opt.dataroot = 'datasets/sunrgbd'
     opt.dataset = 'sunrgbd'
     opt.name = 'sunrgbd'
+
     opt = opt.parse()
+
+    if not useGpu:
+        opt.gpu_ids = []
 
     data_loader = CreateDataLoader(opt)
     dataset = data_loader.load_data()
@@ -87,10 +98,13 @@ if __name__ == '__main__':
         if datasetName == "active_vision" or datasetName == "putkk":
             rgb_image = rgb_image.crop((420, 0, 1500, 1080))
             depth_image = depth_image.crop((420, 0, 1500, 1080))
+        elif datasetName == "semantics3d_raw":
+            rgb_image = rgb_image.crop((256, 0, 1280, 1024))
+            depth_image = depth_image.crop((256, 0, 1280, 1024))
 
-        test_transforms_rgb = transforms.Compose([transforms.Resize((224,224)),
+        test_transforms_rgb = transforms.Compose([transforms.Resize((224,224), interpolation=PIL.Image.NEAREST),
                                             transforms.ToTensor()])
-        test_transforms_depth = transforms.Compose([transforms.Resize((224,224)),
+        test_transforms_depth = transforms.Compose([transforms.Resize((224,224), interpolation=PIL.Image.NEAREST),
                                             transforms.Grayscale(1),
                                             transforms.ToTensor()])
         rgb_image = test_transforms_rgb(rgb_image).float().unsqueeze(0)
@@ -147,10 +161,13 @@ if __name__ == '__main__':
         if datasetName == "active_vision" or datasetName == "putkk":
             rgb_image = rgb_image.crop((420, 0, 1500, 1080))
             depth_image = depth_image.crop((420, 0, 1500, 1080))
+        elif datasetName == "semantics3d_raw":
+            rgb_image = rgb_image.crop((256, 0, 1280, 1024))
+            depth_image = depth_image.crop((256, 0, 1280, 1024))
 
-        test_transforms_rgb = transforms.Compose([transforms.Resize((224, 224)),
+        test_transforms_rgb = transforms.Compose([transforms.Resize((224, 224), interpolation=PIL.Image.NEAREST),
                                                   transforms.ToTensor()])
-        test_transforms_depth = transforms.Compose([transforms.Resize((224, 224)),
+        test_transforms_depth = transforms.Compose([transforms.Resize((224, 224), interpolation=PIL.Image.NEAREST),
                                                     transforms.Grayscale(1),
                                                     transforms.ToTensor()])
         rgb_image = test_transforms_rgb(rgb_image).float().unsqueeze(0)
