@@ -1,7 +1,14 @@
-<!-- <img src='imgs/horse2zebra.gif' align="right" width=384> -->
-<!-- <br><br><br> -->
+# FuseNet - Changes on this repository
 
-# [FuseNet](https://github.com/tum-vision/fusenet) implementation in PyTorch
+Added a run.py file that uses FuseNet prediction over a dataset named "mestrado", subdivided into four sets.
+
+This file also collect some statistics at run. Added "only cpu" option. 
+
+Added Dockerfile (builded with name "obeach") and docker-compose.yml with a image with compatible system requirements to run this project.
+
+Results obtained with "mestrado" dataset will be public available soon, comparing this approach with others semantic sgmentation algorithms.     
+
+# Original readme - [FuseNet](https://github.com/tum-vision/fusenet) implementation in PyTorch
 
 This is the PyTorch implementation for FuseNet, developed based on [Pix2Pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) code.
 
